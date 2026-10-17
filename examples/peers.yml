@@ -1,0 +1,5 @@
+# Maps WireGuard peer public keys to friendly names, exposed as the `name`
+# label on peer metrics. Reload without restarting: kill -HUP <pid>
+peers:
+  "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=": alice-laptop
+  "TrMvSoP4jYQlY6RIzBgbssQqY3vxI2Pi+y71lOWWXX0=": bob-phone

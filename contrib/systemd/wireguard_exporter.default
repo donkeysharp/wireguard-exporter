@@ -1,0 +1,2 @@
+# Installed as /etc/default/wireguard_exporter
+WIREGUARD_EXPORTER_OPTS="--web.listen-address=:9586 --wireguard.peer-names-file=/etc/wireguard_exporter/peers.yml"
