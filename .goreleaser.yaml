@@ -11,6 +11,7 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -trimpath
+    mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
       - -s -w -X main.version={{ .Version }} -X main.revision={{ .ShortCommit }}
     goos:
@@ -29,14 +30,25 @@ archives:
     name_template: >-
       {{ .ProjectName }}-{{ .Version }}.{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
     wrap_in_directory: true
+    builds_info:
+      owner: root
+      group: root
+      mode: 0755
+      mtime: "{{ .CommitDate }}"
     files:
-      - README.md
-      - examples/peers.yml
-      - contrib/systemd/*
+      - src: README.md
+        info: &file_info
+          owner: root
+          group: root
+          mode: 0644
+          mtime: "{{ .CommitDate }}"
+      - src: examples/peers.yml
+        info: *file_info
+      - src: contrib/systemd/*
+        info: *file_info
       - src: contrib/generate-peers-file.sh
-        dst: contrib
-        strip_parent: true
         info:
+          <<: *file_info
           mode: 0755
 
 checksum:
