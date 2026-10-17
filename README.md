@@ -4,13 +4,31 @@ A small Prometheus exporter for WireGuard. It reads device and peer state
 directly from the kernel over netlink (via
 [wgctrl](https://pkg.go.dev/golang.zx2c4.com/wireguard/wgctrl)), so the `wg`
 binary is not needed. Userspace implementations (e.g. `wireguard-go`) are
-supported too.
+supported too. It was originally thought for my homelab, so in case it is useful for you, feel free to use it/
 
 State is read on every scrape. There is no background polling and no cache.
 
+## Install
+
+Download the tarball for your architecture from the
+[releases page](https://github.com/donkeysharp/wireguard-exporter/releases)
+(`uname -m`: `x86_64` → `amd64`, `aarch64` → `arm64`, `armv7l` → `armv7`):
+
+```sh
+VERSION=0.1.0 ARCH=amd64
+curl -LO https://github.com/donkeysharp/wireguard-exporter/releases/download/v${VERSION}/wireguard_exporter-${VERSION}.linux-${ARCH}.tar.gz
+curl -LO https://github.com/donkeysharp/wireguard-exporter/releases/download/v${VERSION}/sha256sums.txt
+sha256sum --ignore-missing -c sha256sums.txt
+tar -xzf wireguard_exporter-${VERSION}.linux-${ARCH}.tar.gz
+cd wireguard_exporter-${VERSION}.linux-${ARCH}
+```
+
+Each tarball contains the binary, the systemd unit, `contrib/generate-peers-file.sh`
+and an example peers file. Then follow the [systemd](#systemd) steps below.
+
 ## Build
 
-Requires Go 1.22.
+Requires Go 1.22 or higher.
 
 ```sh
 make            # fmt check, vet, test (-race), build -> bin/wireguard_exporter
@@ -58,7 +76,17 @@ peers:
   "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=": alice-laptop
 ```
 
-The name is added as the `name` label on every peer metric, and is empty for
+You don't need to collect the keys by hand: generate the file from the running
+WireGuard config (each peer is named after its allowed IPs), then rename
+entries as you like:
+
+```sh
+sudo ./contrib/generate-peers-file.sh | sudo tee /etc/wireguard_exporter/peers.yml
+sudo ./contrib/generate-peers-file.sh wg0   # a single interface
+```
+
+The file is optional and can live anywhere (pass an absolute path). The name
+is added as the `name` label on every peer metric, and is empty for
 unknown peers. Send `SIGHUP` (`systemctl reload wireguard_exporter`) to reload
 the file. If the new file is invalid, the previous mapping is kept and an error
 is logged.
@@ -101,11 +129,37 @@ rate(wireguard_peer_receive_bytes_total[5m])
 ## systemd
 
 ```sh
-sudo install -m 0755 bin/wireguard_exporter /usr/local/bin/
+# From an extracted release tarball (use bin/wireguard_exporter if built from source)
+sudo install -m 0755 wireguard_exporter /usr/local/bin/
 sudo install -m 0644 contrib/systemd/wireguard_exporter.service /etc/systemd/system/
 sudo install -m 0644 contrib/systemd/wireguard_exporter.default /etc/default/wireguard_exporter
 sudo install -d /etc/wireguard_exporter
-sudo install -m 0644 examples/peers.yml /etc/wireguard_exporter/peers.yml
+sudo ./contrib/generate-peers-file.sh | sudo tee /etc/wireguard_exporter/peers.yml
 sudo systemctl daemon-reload
 sudo systemctl enable --now wireguard_exporter
+```
+
+## Releasing
+
+CI (`.github/workflows/ci.yml`) runs on every push to `master` and on pull
+requests. It checks formatting, `go mod tidy`, vet, race tests, cross builds and
+ShellCheck, and does a GoReleaser dry run so packaging problems show up before
+you tag.
+
+To publish a release, push a semver tag:
+
+```sh
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` then runs the tests and
+[GoReleaser](https://goreleaser.com) (`.goreleaser.yaml`), which creates a
+GitHub Release with one `.tar.gz` per architecture, `sha256sums.txt` and a
+changelog. Tags with a suffix such as `v0.2.0-rc.1` are marked as pre-releases.
+
+To build the release archives locally into `dist/` without publishing:
+
+```sh
+make snapshot
 ```
