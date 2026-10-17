@@ -9,7 +9,7 @@ PLATFORMS := linux/amd64 linux/arm64 linux/arm
 export CGO_ENABLED := 0
 export GOTOOLCHAIN := local
 
-.PHONY: all build test vet fmt lint cross clean
+.PHONY: all build test vet fmt lint cross snapshot clean
 
 all: fmt vet test build
 
@@ -37,5 +37,9 @@ cross:
 			-o bin/$(BINARY)-$$os-$$arch ./cmd/$(BINARY) || exit 1; \
 	done
 
+snapshot:
+	@command -v goreleaser >/dev/null || { echo "goreleaser not installed: https://goreleaser.com/install/"; exit 1; }
+	goreleaser release --snapshot --clean
+
 clean:
-	rm -rf bin
+	rm -rf bin dist
