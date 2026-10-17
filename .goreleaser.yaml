@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: wireguard_exporter
+
+builds:
+  - id: wireguard_exporter
+    main: ./cmd/wireguard_exporter
+    binary: wireguard_exporter
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }} -X main.revision={{ .ShortCommit }}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    # e.g. wireguard_exporter-1.0.0.linux-amd64.tar.gz (Prometheus convention)
+    name_template: >-
+      {{ .ProjectName }}-{{ .Version }}.{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    wrap_in_directory: true
+    files:
+      - README.md
+      - examples/peers.yml
+      - contrib/systemd/*
+      - src: contrib/generate-peers-file.sh
+        dst: contrib
+        strip_parent: true
+        info:
+          mode: 0755
+
+checksum:
+  name_template: sha256sums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+release:
+  draft: false
+  prerelease: auto
